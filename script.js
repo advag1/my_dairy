@@ -1,7 +1,7 @@
 const DAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 const USER_SESSION_KEY = 'weekly_planner_current_user';
 
-let currentUser = null; // { id, username }
+let currentUser = null;
 let notes = [];
 let selectedColor = 'yellow';
 let draggedNoteId = null;
@@ -19,6 +19,7 @@ const logoutBtn = document.getElementById('logoutBtn');
 
 // אלמנטים מה-DOM
 const boardEl = document.getElementById('weeklyBoard');
+const backlogZoneEl = document.getElementById('backlogZone');
 const searchInput = document.getElementById('searchInput');
 const categoryFilter = document.getElementById('categoryFilter');
 const weekRangeEl = document.getElementById('weekRange');
@@ -29,6 +30,7 @@ const modalTitle = document.getElementById('modalTitle');
 const noteForm = document.getElementById('noteForm');
 const noteIdInput = document.getElementById('noteId');
 const noteDayInput = document.getElementById('noteDay');
+const periodGroup = document.getElementById('periodGroup');
 const notePeriodInput = document.getElementById('notePeriod');
 const noteCategoryInput = document.getElementById('noteCategory');
 const noteTextInput = document.getElementById('noteText');
@@ -36,7 +38,7 @@ const noteDueDateInput = document.getElementById('noteDueDate');
 const noteEstimateInput = document.getElementById('noteEstimate');
 const deleteNoteBtn = document.getElementById('deleteNoteBtn');
 
-// --- ניהול משתמשים והתחברות מול השרת ---
+// --- ניהול משתמשים והתחברות ---
 function initSession() {
   const savedUser = localStorage.getItem(USER_SESSION_KEY);
   if (savedUser) {
@@ -104,7 +106,7 @@ logoutBtn.addEventListener('click', () => {
   authModal.classList.remove('hidden');
 });
 
-// --- תקשורת פתקים מול השרת ---
+// --- תקשורת מול השרת ---
 async function fetchNotes() {
   if (!currentUser) return;
   try {
@@ -158,7 +160,7 @@ async function deleteNoteOnServer(noteId) {
   });
 }
 
-// --- חישוב תאריכי השבוע הנוכחי ---
+// --- חישוב תאריכי השבוע ---
 function getWeekDates() {
   const today = new Date();
   const currentDay = today.getDay();
@@ -183,6 +185,7 @@ function renderEmptyBoardStructure() {
   const todayIndex = new Date().getDay();
   weekRangeEl.textContent = `${formatShortDate(weekDates[0])} - ${formatShortDate(weekDates[6])}`;
   boardEl.innerHTML = '';
+  backlogZoneEl.innerHTML = '';
 
   DAYS.forEach((dayName, dayIndex) => {
     const col = document.createElement('section');
@@ -199,7 +202,7 @@ function renderEmptyBoardStructure() {
   });
 }
 
-// --- רינדור הלוח השבועי ---
+// --- רינדור הלוח השבועי ומחסן המשימות ---
 function renderBoard() {
   renderEmptyBoardStructure();
 
@@ -212,21 +215,35 @@ function renderBoard() {
       note.text.toLowerCase().includes(query) ||
       (note.category && note.category.toLowerCase().includes(query));
 
-    const matchesCategory =
-      selectedCat === 'all' ||
-      (note.category && note.category.includes(selectedCat));
+    let matchesCategory = true;
+    if (selectedCat === 'מבחן') {
+      matchesCategory = note.type === 'event' || (note.category && note.category.includes('מבחן'));
+    } else if (selectedCat !== 'all') {
+      matchesCategory = note.category && note.category.includes(selectedCat);
+    }
 
     return matchesSearch && matchesCategory;
   });
 
+  // מיון כך שמועדים חשובים/מבחנים יופיעו תמיד ראשונים בראש היום
+  filteredNotes.sort((a, b) => (b.type === 'event' ? 1 : 0) - (a.type === 'event' ? 1 : 0));
+
   filteredNotes.forEach((note) => {
-    const zone = document.querySelector(
-      `.notes-dropzone[data-day="${note.day}"][data-period="${note.period}"]`
-    );
-    if (zone) {
-      zone.appendChild(createNoteElement(note));
+    if (Number(note.day) === -1) {
+      backlogZoneEl.appendChild(createNoteElement(note));
+    } else {
+      const zone = document.querySelector(
+        `.notes-dropzone[data-day="${note.day}"][data-period="${note.period}"]`
+      );
+      if (zone) {
+        zone.appendChild(createNoteElement(note));
+      }
     }
   });
+
+  if (backlogZoneEl.children.length === 0) {
+    backlogZoneEl.innerHTML = `<div class="backlog-empty">אין כרגע משימות ממתינות. לחצי על "+ משימה למחסן" כדי להוסיף רעיונות ומשימות לעתיד.</div>`;
+  }
 
   setupDragAndDrop();
 }
@@ -244,8 +261,12 @@ function buildPeriodHTML(dayIndex, period, label) {
 }
 
 function createNoteElement(note) {
+  const isEvent = note.type === 'event';
   const card = document.createElement('article');
-  card.className = `sticky-note color-${note.color || 'yellow'} ${note.done ? 'done' : ''}`;
+  card.className = isEvent
+    ? `sticky-note event-card ${note.done ? 'done' : ''}`
+    : `sticky-note color-${note.color || 'yellow'} ${note.done ? 'done' : ''}`;
+
   card.draggable = true;
   card.dataset.id = note.id;
 
@@ -253,12 +274,16 @@ function createNoteElement(note) {
     ? note.dueDate.split('-').reverse().slice(0, 2).join('/')
     : '';
 
+  const badgeText = isEvent
+    ? `🎯 ${escapeHTML(note.category || 'מועד חשוב')}`
+    : escapeHTML(note.category || 'כללי');
+
   card.innerHTML = `
     <div class="note-top">
-      <span class="note-category">${escapeHTML(note.category || 'כללי')}</span>
+      <span class="note-category">${badgeText}</span>
       <div class="note-actions">
         <input type="checkbox" class="note-check" ${note.done ? 'checked' : ''} title="סמן כבוצע" />
-        <button type="button" class="note-edit-btn" title="ערוך פתק">✎</button>
+        <button type="button" class="note-edit-btn" title="ערוך">✎</button>
       </div>
     </div>
     <div class="note-body">${escapeHTML(note.text)}</div>
@@ -297,7 +322,7 @@ function createNoteElement(note) {
   return card;
 }
 
-// --- Drag & Drop ---
+// --- Drag & Drop (כולל גרירה למחסן וממנו) ---
 function setupDragAndDrop() {
   const dropzones = document.querySelectorAll('.notes-dropzone');
 
@@ -317,20 +342,29 @@ function setupDragAndDrop() {
       if (!draggedNoteId) return;
 
       const targetDay = Number(zone.dataset.day);
-      const targetPeriod = zone.dataset.period;
+      const targetPeriod = targetDay === -1 ? 'unscheduled' : zone.dataset.period;
       updateNoteOnServer(draggedNoteId, { day: targetDay, period: targetPeriod });
     });
   });
 }
 
-// --- ניהול מודאל הפתק ---
+// --- ניהול מודאל הפתק / המועד ---
+function togglePeriodVisibility() {
+  const isUnscheduled = Number(noteDayInput.value) === -1;
+  periodGroup.style.visibility = isUnscheduled ? 'hidden' : 'visible';
+}
+
+noteDayInput.addEventListener('change', togglePeriodVisibility);
+
 function openNewNoteModal(day = 0, period = 'morning') {
-  modalTitle.textContent = 'פתק משימה חדש';
+  modalTitle.textContent = day === -1 ? 'הוספת משימה למחסן' : 'הוספת פתק / מועד';
   noteForm.reset();
   noteIdInput.value = '';
   noteDayInput.value = day;
-  notePeriodInput.value = period;
+  notePeriodInput.value = period === 'unscheduled' ? 'morning' : period;
+  document.querySelector('input[name="noteType"][value="task"]').checked = true;
   selectColor('yellow');
+  togglePeriodVisibility();
   deleteNoteBtn.classList.add('hidden');
   modal.classList.remove('hidden');
   noteTextInput.focus();
@@ -339,15 +373,18 @@ function openNewNoteModal(day = 0, period = 'morning') {
 window.openNewNoteModal = openNewNoteModal;
 
 function openEditNoteModal(note) {
-  modalTitle.textContent = 'עריכת פתק';
+  modalTitle.textContent = note.type === 'event' ? 'עריכת מועד חשוב' : 'עריכת פתק';
   noteIdInput.value = note.id;
   noteDayInput.value = note.day;
-  notePeriodInput.value = note.period;
+  notePeriodInput.value = note.period === 'unscheduled' ? 'morning' : note.period;
+  const typeVal = note.type === 'event' ? 'event' : 'task';
+  document.querySelector(`input[name="noteType"][value="${typeVal}"]`).checked = true;
   noteCategoryInput.value = note.category || '';
   noteTextInput.value = note.text || '';
   noteDueDateInput.value = note.dueDate || '';
   noteEstimateInput.value = note.estimate || '';
   selectColor(note.color || 'yellow');
+  togglePeriodVisibility();
   deleteNoteBtn.classList.remove('hidden');
   modal.classList.remove('hidden');
 }
@@ -371,7 +408,8 @@ function escapeHTML(str) {
     .replace(/"/g, '&quot;');
 }
 
-document.getElementById('openNewNoteBtn').addEventListener('click', () => openNewNoteModal());
+document.getElementById('openNewNoteBtn').addEventListener('click', () => openNewNoteModal(0, 'morning'));
+document.getElementById('addBacklogBtn').addEventListener('click', () => openNewNoteModal(-1, 'unscheduled'));
 document.getElementById('closeModalBtn').addEventListener('click', closeModal);
 document.getElementById('cancelModalBtn').addEventListener('click', closeModal);
 
@@ -382,9 +420,13 @@ document.querySelectorAll('.color-swatch').forEach((btn) => {
 noteForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const id = noteIdInput.value;
+  const chosenDay = Number(noteDayInput.value);
+  const chosenType = document.querySelector('input[name="noteType"]:checked').value;
+
   const payload = {
-    day: Number(noteDayInput.value),
-    period: notePeriodInput.value,
+    type: chosenType,
+    day: chosenDay,
+    period: chosenDay === -1 ? 'unscheduled' : notePeriodInput.value,
     category: noteCategoryInput.value.trim(),
     text: noteTextInput.value.trim(),
     color: selectedColor,
@@ -411,5 +453,4 @@ deleteNoteBtn.addEventListener('click', async () => {
 searchInput.addEventListener('input', renderBoard);
 categoryFilter.addEventListener('change', renderBoard);
 
-// הפעלה ראשונית
 initSession();

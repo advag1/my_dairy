@@ -52,23 +52,36 @@
       </div>
 
       <div class="topbar-controls">
-        <input type="text" id="searchInput" class="control-input" placeholder="🔍 חיפוש משימה..." />
+        <input type="text" id="searchInput" class="control-input" placeholder="🔍 חיפוש משימה / מועד..." />
         <select id="categoryFilter" class="control-select">
           <option value="all">כל הקטגוריות</option>
+          <option value="מבחן">🎯 מועדים ומבחנים</option>
           <option value="בית">בית</option>
           <option value="לימודים">לימודים</option>
           <option value="עבודה">עבודה</option>
           <option value="אישי">אישי</option>
         </select>
-        <button type="button" id="openNewNoteBtn" class="btn-primary">+ פתק חדש</button>
+        <button type="button" id="openNewNoteBtn" class="btn-primary">+ הוסף פתק / מועד</button>
       </div>
     </header>
 
-    <!-- לוח שבועי - 7 עמודות על מסך אחד -->
+    <!-- לוח שבועי - 7 עמודות -->
     <main class="board" id="weeklyBoard"></main>
+
+    <!-- אזור תחתון: משימות שטרם שובצו -->
+    <section class="backlog-section">
+      <div class="backlog-header">
+        <div class="backlog-title">
+          <span>📥 מחסן משימות (עוד לא החלטתי מתי לעשות)</span>
+          <span class="backlog-hint">גררי משימה מכאן אל אחד הימים בלוח, או לחצי לעריכה</span>
+        </div>
+        <button type="button" id="addBacklogBtn" class="btn-secondary-sm">+ משימה למחסן</button>
+      </div>
+      <div class="notes-dropzone backlog-dropzone" id="backlogZone" data-day="-1" data-period="unscheduled"></div>
+    </section>
   </div>
 
-  <!-- חלונית (Modal) ליצירה ועריכה של פתק -->
+  <!-- חלונית (Modal) ליצירה ועריכה של פתק או מועד -->
   <div id="noteModal" class="modal-backdrop hidden">
     <div class="modal-card">
       <div class="modal-header">
@@ -79,48 +92,63 @@
       <form id="noteForm">
         <input type="hidden" id="noteId" />
 
+        <!-- בחירת סוג: פתק משימה או מועד/מבחן -->
+        <div class="form-group">
+          <label>סוג הפריט</label>
+          <div class="type-selector">
+            <label class="type-option">
+              <input type="radio" name="noteType" value="task" checked />
+              <span>📝 פתק משימה</span>
+            </label>
+            <label class="type-option event-opt">
+              <input type="radio" name="noteType" value="event" />
+              <span>🎯 מועד חשוב / מבחן</span>
+            </label>
+          </div>
+        </div>
+
         <div class="form-row two-cols">
           <div class="form-group">
-            <label for="noteDay">יום בשבוע</label>
+            <label for="noteDay">מתי לבצע?</label>
             <select id="noteDay" required>
-              <option value="0">ראשון</option>
-              <option value="1">שני</option>
-              <option value="2">שלישי</option>
-              <option value="3">רביעי</option>
-              <option value="4">חמישי</option>
-              <option value="5">שישי</option>
-              <option value="6">שבת</option>
+              <option value="-1">📥 עוד לא הוחלט (מחסן משימות)</option>
+              <option value="0">יום ראשון</option>
+              <option value="1">יום שני</option>
+              <option value="2">יום שלישי</option>
+              <option value="3">יום רביעי</option>
+              <option value="4">יום חמישי</option>
+              <option value="5">יום שישי</option>
+              <option value="6">יום שבת</option>
             </select>
           </div>
 
-          <div class="form-group">
+          <div class="form-group" id="periodGroup">
             <label for="notePeriod">זמן ביום</label>
-            <select id="notePeriod" required>
+            <select id="notePeriod">
               <option value="morning">☀️ בוקר</option>
               <option value="evening">🌙 ערב</option>
             </select>
           </div>
         </div>
 
-        <!-- שדה אופציונלי - הוסר ה-required -->
         <div class="form-group">
-          <label for="noteCategory">למה זה קשור? (יופיע בקטן בראש הפתק)</label>
-          <input type="text" id="noteCategory" placeholder="לדוגמה: משימת בית, שיעורי בית..." list="categorySuggestions" />
+          <label for="noteCategory">למה זה קשור? (קורס, נושא, קטגוריה)</label>
+          <input type="text" id="noteCategory" placeholder="לדוגמה: מבחן במתמטיקה, אודיסאה, בית..." list="categorySuggestions" />
           <datalist id="categorySuggestions">
-            <option value="משימת בית"></option>
+            <option value="מבחן"></option>
+            <option value="הגשת עבודה"></option>
             <option value="שיעורי בית"></option>
-            <option value="עבודה"></option>
+            <option value="משימת בית"></option>
             <option value="סידורים"></option>
-            <option value="ספורט ובריאות"></option>
           </datalist>
         </div>
 
         <div class="form-group">
-          <label for="noteText">תוכן המשימה</label>
-          <textarea id="noteText" rows="3" placeholder="מה צריך לעשות?" required></textarea>
+          <label for="noteText">תיאור המשימה / פרטי המועד</label>
+          <textarea id="noteText" rows="3" placeholder="מה צריך לעשות או לזכור?" required></textarea>
         </div>
 
-        <div class="form-group">
+        <div class="form-group" id="colorGroup">
           <label>צבע הפתק</label>
           <div class="color-picker" id="colorPicker">
             <button type="button" class="color-swatch selected" data-color="yellow" style="background:#fef08a;" title="צהוב"></button>
@@ -134,21 +162,21 @@
 
         <div class="form-row two-cols">
           <div class="form-group">
-            <label for="noteDueDate">תאריך יעד</label>
+            <label for="noteDueDate">תאריך המבחן / יעד</label>
             <input type="date" id="noteDueDate" />
           </div>
 
           <div class="form-group">
-            <label for="noteEstimate">זמן עבודה משוער</label>
-            <input type="text" id="noteEstimate" placeholder="לדוגמה: 45 דק׳ / שעתיים" />
+            <label for="noteEstimate">שעה / זמן משוער</label>
+            <input type="text" id="noteEstimate" placeholder="לדוגמה: 09:00 / שעתיים" />
           </div>
         </div>
 
         <div class="modal-footer">
-          <button type="button" id="deleteNoteBtn" class="btn-danger hidden">מחק פתק</button>
+          <button type="button" id="deleteNoteBtn" class="btn-danger hidden">מחק</button>
           <div class="modal-actions-left">
             <button type="button" id="cancelModalBtn" class="btn-secondary">ביטול</button>
-            <button type="submit" class="btn-primary">שמור פתק</button>
+            <button type="submit" class="btn-primary">שמור</button>
           </div>
         </div>
       </form>

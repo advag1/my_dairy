@@ -9,7 +9,6 @@ const DB_FILE = path.join(__dirname, 'database.json');
 app.use(express.json());
 app.use(express.static(__dirname));
 
-// אתחול קובץ מסד הנתונים אם אינו קיים
 if (!fs.existsSync(DB_FILE)) {
   fs.writeFileSync(DB_FILE, JSON.stringify({ users: [], notes: [] }, null, 2), 'utf8');
 }
@@ -31,17 +30,14 @@ function writeDB(data) {
   fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
 }
 
-// יצירת ID קצר וקריא למשתמש (לדוגמה: USR-4829)
 function generateUserId() {
   return 'USR-' + Math.floor(1000 + Math.random() * 9000);
 }
 
 // --- API משתמשים ---
-// התחברות או הרשמה אוטומטית לפי שם משתמש או ID
 app.post('/api/login', (req, res) => {
   const { username, userId } = req.body;
   const db = readDB();
-
   let user = null;
 
   if (userId && userId.trim()) {
@@ -54,7 +50,6 @@ app.post('/api/login', (req, res) => {
     user = db.users.find((u) => u.username.toLowerCase() === cleanName.toLowerCase());
 
     if (!user) {
-      // יצירת משתמש חדש עם ID ייחודי
       let newId = generateUserId();
       while (db.users.some((u) => u.id === newId)) {
         newId = generateUserId();
@@ -70,15 +65,13 @@ app.post('/api/login', (req, res) => {
   res.json(user);
 });
 
-// --- API פתקים לפי משתמש ---
-// קבלת כל הפתקים של משתמש ספציפי
+// --- API פתקים ומועדים לפי משתמש ---
 app.get('/api/users/:userId/notes', (req, res) => {
   const db = readDB();
   const userNotes = db.notes.filter((n) => n.userId === req.params.userId);
   res.json(userNotes);
 });
 
-// יצירת פתק חדש למשתמש
 app.post('/api/users/:userId/notes', (req, res) => {
   const db = readDB();
   const userExists = db.users.some((u) => u.id === req.params.userId);
@@ -86,11 +79,15 @@ app.post('/api/users/:userId/notes', (req, res) => {
     return res.status(404).json({ error: 'משתמש לא נמצא' });
   }
 
+  // day = -1 מייצג משימה שטרם שובצה ליום (מחסן משימות)
+  const parsedDay = req.body.day !== undefined ? Number(req.body.day) : 0;
+
   const newNote = {
     id: Date.now().toString(),
     userId: req.params.userId,
-    day: Number(req.body.day ?? 0),
-    period: req.body.period === 'evening' ? 'evening' : 'morning',
+    type: req.body.type === 'event' ? 'event' : 'task',
+    day: parsedDay,
+    period: parsedDay === -1 ? 'unscheduled' : (req.body.period === 'evening' ? 'evening' : 'morning'),
     category: req.body.category || '',
     text: req.body.text || '',
     color: req.body.color || 'yellow',
@@ -104,7 +101,6 @@ app.post('/api/users/:userId/notes', (req, res) => {
   res.status(201).json(newNote);
 });
 
-// עדכון פתק קיים של משתמש
 app.put('/api/users/:userId/notes/:noteId', (req, res) => {
   const db = readDB();
   const index = db.notes.findIndex(
@@ -126,7 +122,6 @@ app.put('/api/users/:userId/notes/:noteId', (req, res) => {
   res.json(db.notes[index]);
 });
 
-// מחיקת פתק של משתמש
 app.delete('/api/users/:userId/notes/:noteId', (req, res) => {
   const db = readDB();
   db.notes = db.notes.filter(
