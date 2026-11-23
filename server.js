@@ -34,35 +34,68 @@ function generateUserId() {
   return 'USR-' + Math.floor(1000 + Math.random() * 9000);
 }
 
-// --- API משתמשים ---
-app.post('/api/login', (req, res) => {
-  const { username, userId } = req.body;
-  const db = readDB();
-  let user = null;
+// --- API הרשמה (הגדרת שם משתמש וסיסמה קבועים למשתמש חדש) ---
+app.post('/api/register', (req, res) => {
+  const { username, password } = req.body;
 
-  if (userId && userId.trim()) {
-    user = db.users.find((u) => u.id.toLowerCase() === userId.trim().toLowerCase());
-    if (!user) {
-      return res.status(404).json({ error: 'מזהה משתמש (ID) לא נמצא במערכת' });
-    }
-  } else if (username && username.trim()) {
-    const cleanName = username.trim();
-    user = db.users.find((u) => u.username.toLowerCase() === cleanName.toLowerCase());
-
-    if (!user) {
-      let newId = generateUserId();
-      while (db.users.some((u) => u.id === newId)) {
-        newId = generateUserId();
-      }
-      user = { id: newId, username: cleanName };
-      db.users.push(user);
-      writeDB(db);
-    }
-  } else {
-    return res.status(400).json({ error: 'יש להזין שם משתמש או ID' });
+  if (!username || !username.trim() || !password || !password.trim()) {
+    return res.status(400).json({ error: 'יש להזין שם משתמש וסיסמה' });
   }
 
-  res.json(user);
+  const cleanName = username.trim();
+  const db = readDB();
+
+  const exists = db.users.some((u) => u.username.toLowerCase() === cleanName.toLowerCase());
+  if (exists) {
+    return res.status(409).json({ error: 'שם המשתמש כבר תפוס, בחרי שם אחר או עברי להתחברות' });
+  }
+
+  let newId = generateUserId();
+  while (db.users.some((u) => u.id === newId)) {
+    newId = generateUserId();
+  }
+
+  const newUser = {
+    id: newId,
+    username: cleanName,
+    password: password.trim()
+  };
+
+  db.users.push(newUser);
+  writeDB(db);
+
+  res.status(201).json({ id: newUser.id, username: newUser.username });
+});
+
+// --- API התחברות למשתמש קיים ---
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !username.trim() || !password) {
+    return res.status(400).json({ error: 'יש להזין שם משתמש וסיסמה' });
+  }
+
+  const cleanName = username.trim();
+  const db = readDB();
+  const userIndex = db.users.findIndex(
+    (u) => u.username.toLowerCase() === cleanName.toLowerCase()
+  );
+
+  if (userIndex === -1) {
+    return res.status(404).json({ error: 'שם משתמש לא נמצא. הירשמי תחילה כמשתמשת חדשה.' });
+  }
+
+  const user = db.users[userIndex];
+
+  // תמיכה במשתמש ישן שנוצר לפני שהוספנו סיסמאות - שומר לו את הסיסמה הראשונה שיזין
+  if (!user.password) {
+    db.users[userIndex].password = password;
+    writeDB(db);
+  } else if (user.password !== password) {
+    return res.status(401).json({ error: 'סיסמה שגויה' });
+  }
+
+  res.json({ id: user.id, username: user.username });
 });
 
 // --- API פתקים ומועדים לפי משתמש ---
@@ -79,7 +112,6 @@ app.post('/api/users/:userId/notes', (req, res) => {
     return res.status(404).json({ error: 'משתמש לא נמצא' });
   }
 
-  // day = -1 מייצג משימה שטרם שובצה ליום (מחסן משימות)
   const parsedDay = req.body.day !== undefined ? Number(req.body.day) : 0;
 
   const newNote = {

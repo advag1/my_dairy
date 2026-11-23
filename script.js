@@ -5,12 +5,19 @@ let currentUser = null;
 let notes = [];
 let selectedColor = 'yellow';
 let draggedNoteId = null;
+let isRegisterMode = false;
+let weekOffset = 0;
 
-// אלמנטים של התחברות
+// אלמנטים של התחברות / הרשמה
 const authModal = document.getElementById('authModal');
+const authTitle = document.getElementById('authTitle');
+const authDesc = document.getElementById('authDesc');
+const authSubmitBtn = document.getElementById('authSubmitBtn');
+const authSwitchText = document.getElementById('authSwitchText');
+const toggleAuthModeBtn = document.getElementById('toggleAuthModeBtn');
 const loginForm = document.getElementById('loginForm');
 const loginUsernameInput = document.getElementById('loginUsername');
-const loginUserIdInput = document.getElementById('loginUserId');
+const loginPasswordInput = document.getElementById('loginPassword');
 const loginError = document.getElementById('loginError');
 const userBadge = document.getElementById('userBadge');
 const displayUsername = document.getElementById('displayUsername');
@@ -29,14 +36,41 @@ const modal = document.getElementById('noteModal');
 const modalTitle = document.getElementById('modalTitle');
 const noteForm = document.getElementById('noteForm');
 const noteIdInput = document.getElementById('noteId');
+const eventTitleGroup = document.getElementById('eventTitleGroup');
+const eventTitleInput = document.getElementById('eventTitleInput');
+const dayGroup = document.getElementById('dayGroup');
 const noteDayInput = document.getElementById('noteDay');
 const periodGroup = document.getElementById('periodGroup');
 const notePeriodInput = document.getElementById('notePeriod');
+const categoryGroup = document.getElementById('categoryGroup');
+const textGroup = document.getElementById('textGroup');
+const colorGroup = document.getElementById('colorGroup');
+const dueDateLabel = document.getElementById('dueDateLabel');
 const noteCategoryInput = document.getElementById('noteCategory');
 const noteTextInput = document.getElementById('noteText');
 const noteDueDateInput = document.getElementById('noteDueDate');
 const noteEstimateInput = document.getElementById('noteEstimate');
 const deleteNoteBtn = document.getElementById('deleteNoteBtn');
+
+// --- החלפה בין מצב התחברות למצב הרשמה ---
+toggleAuthModeBtn.addEventListener('click', () => {
+  isRegisterMode = !isRegisterMode;
+  loginError.classList.add('hidden');
+
+  if (isRegisterMode) {
+    authTitle.textContent = '✨ יצירת משתמש חדש';
+    authDesc.textContent = 'בחרי שם משתמש וסיסמה קבועים שישמשו אותך לכניסה ליומן שלך:';
+    authSubmitBtn.textContent = 'צרי משתמש והיכנסי';
+    authSwitchText.textContent = 'כבר יש לך משתמש?';
+    toggleAuthModeBtn.textContent = 'התחברי כאן';
+  } else {
+    authTitle.textContent = '🔒 כניסה ליומן השבועי';
+    authDesc.textContent = 'הזיני את שם המשתמש והסיסמה שלך:';
+    authSubmitBtn.textContent = 'התחברות';
+    authSwitchText.textContent = 'עוד אין לך משתמש?';
+    toggleAuthModeBtn.textContent = 'הגדירי שם משתמש וסיסמה כאן';
+  }
+});
 
 // --- ניהול משתמשים והתחברות ---
 function initSession() {
@@ -55,23 +89,25 @@ loginForm.addEventListener('submit', async (e) => {
   loginError.classList.add('hidden');
 
   const username = loginUsernameInput.value.trim();
-  const userId = loginUserIdInput.value.trim();
+  const password = loginPasswordInput.value;
 
-  if (!username && !userId) {
-    showLoginError('נא להזין שם משתמש או ID.');
+  if (!username || !password) {
+    showLoginError('נא להזין שם משתמש וסיסמה.');
     return;
   }
 
+  const endpoint = isRegisterMode ? '/api/register' : '/api/login';
+
   try {
-    const res = await fetch('/api/login', {
+    const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, userId })
+      body: JSON.stringify({ username, password })
     });
 
     const data = await res.json();
     if (!res.ok) {
-      showLoginError(data.error || 'שגיאה בהתחברות');
+      showLoginError(data.error || 'אירעה שגיאה');
       return;
     }
 
@@ -165,7 +201,8 @@ function getWeekDates() {
   const today = new Date();
   const currentDay = today.getDay();
   const sunday = new Date(today);
-  sunday.setDate(today.getDate() - currentDay);
+  sunday.setHours(0, 0, 0, 0);
+  sunday.setDate(today.getDate() - currentDay + weekOffset * 7);
 
   const dates = [];
   for (let i = 0; i < 7; i++) {
@@ -176,20 +213,48 @@ function getWeekDates() {
   return dates;
 }
 
+function toISODateString(dateObj) {
+  const y = dateObj.getFullYear();
+  const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const d = String(dateObj.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function getDayIndexFromISO(isoStr) {
+  const [y, m, d] = isoStr.split('-').map(Number);
+  return new Date(y, m - 1, d).getDay();
+}
+
 function formatShortDate(dateObj) {
   return `${dateObj.getDate()}/${dateObj.getMonth() + 1}`;
 }
 
+document.getElementById('prevWeekBtn').addEventListener('click', () => {
+  weekOffset--;
+  renderBoard();
+});
+
+document.getElementById('nextWeekBtn').addEventListener('click', () => {
+  weekOffset++;
+  renderBoard();
+});
+
+document.getElementById('todayWeekBtn').addEventListener('click', () => {
+  weekOffset = 0;
+  renderBoard();
+});
+
 function renderEmptyBoardStructure() {
   const weekDates = getWeekDates();
-  const todayIndex = new Date().getDay();
+  const todayISO = toISODateString(new Date());
   weekRangeEl.textContent = `${formatShortDate(weekDates[0])} - ${formatShortDate(weekDates[6])}`;
   boardEl.innerHTML = '';
   backlogZoneEl.innerHTML = '';
 
   DAYS.forEach((dayName, dayIndex) => {
+    const colDateISO = toISODateString(weekDates[dayIndex]);
     const col = document.createElement('section');
-    col.className = `day-column ${dayIndex === todayIndex ? 'is-today' : ''}`;
+    col.className = `day-column ${colDateISO === todayISO ? 'is-today' : ''}`;
     col.innerHTML = `
       <div class="day-header">
         <span>יום ${dayName}</span>
@@ -205,6 +270,10 @@ function renderEmptyBoardStructure() {
 // --- רינדור הלוח השבועי ומחסן המשימות ---
 function renderBoard() {
   renderEmptyBoardStructure();
+
+  const weekDates = getWeekDates();
+  const weekStartISO = toISODateString(weekDates[0]);
+  const weekEndISO = toISODateString(weekDates[6]);
 
   const query = searchInput.value.trim().toLowerCase();
   const selectedCat = categoryFilter.value;
@@ -225,19 +294,33 @@ function renderBoard() {
     return matchesSearch && matchesCategory;
   });
 
-  // מיון כך שמועדים חשובים/מבחנים יופיעו תמיד ראשונים בראש היום
   filteredNotes.sort((a, b) => (b.type === 'event' ? 1 : 0) - (a.type === 'event' ? 1 : 0));
 
   filteredNotes.forEach((note) => {
     if (Number(note.day) === -1) {
       backlogZoneEl.appendChild(createNoteElement(note));
-    } else {
+      return;
+    }
+
+    if (note.type === 'event' && note.dueDate) {
+      if (note.dueDate < weekStartISO || note.dueDate > weekEndISO) {
+        return;
+      }
+      const exactDay = getDayIndexFromISO(note.dueDate);
       const zone = document.querySelector(
-        `.notes-dropzone[data-day="${note.day}"][data-period="${note.period}"]`
+        `.notes-dropzone[data-day="${exactDay}"][data-period="${note.period || 'morning'}"]`
       );
       if (zone) {
         zone.appendChild(createNoteElement(note));
       }
+      return;
+    }
+
+    const zone = document.querySelector(
+      `.notes-dropzone[data-day="${note.day}"][data-period="${note.period}"]`
+    );
+    if (zone) {
+      zone.appendChild(createNoteElement(note));
     }
   });
 
@@ -275,7 +358,7 @@ function createNoteElement(note) {
     : '';
 
   const badgeText = isEvent
-    ? `🎯 ${escapeHTML(note.category || 'מועד חשוב')}`
+    ? '🎯 מועד / מבחן'
     : escapeHTML(note.category || 'כללי');
 
   card.innerHTML = `
@@ -322,7 +405,7 @@ function createNoteElement(note) {
   return card;
 }
 
-// --- Drag & Drop (כולל גרירה למחסן וממנו) ---
+// --- Drag & Drop ---
 function setupDragAndDrop() {
   const dropzones = document.querySelectorAll('.notes-dropzone');
 
@@ -343,18 +426,60 @@ function setupDragAndDrop() {
 
       const targetDay = Number(zone.dataset.day);
       const targetPeriod = targetDay === -1 ? 'unscheduled' : zone.dataset.period;
-      updateNoteOnServer(draggedNoteId, { day: targetDay, period: targetPeriod });
+      const draggedNote = notes.find((n) => n.id === draggedNoteId);
+
+      const updates = { day: targetDay, period: targetPeriod };
+      if (draggedNote && draggedNote.type === 'event' && targetDay !== -1) {
+        const weekDates = getWeekDates();
+        updates.dueDate = toISODateString(weekDates[targetDay]);
+      }
+
+      updateNoteOnServer(draggedNoteId, updates);
     });
   });
 }
 
-// --- ניהול מודאל הפתק / המועד ---
-function togglePeriodVisibility() {
+// --- התאמת הטופס לפי סוג הפריט (משימה vs מבחן/מועד) ---
+function updateFormVisibility() {
+  const selectedType = document.querySelector('input[name="noteType"]:checked').value;
+  const isEvent = selectedType === 'event';
   const isUnscheduled = Number(noteDayInput.value) === -1;
-  periodGroup.style.visibility = isUnscheduled ? 'hidden' : 'visible';
+
+  if (isEvent) {
+    // במבחן/מועד: מציגים כותרת אחת בלבד, מסתירים יום ידני, קטגוריה, תיאור וצבע
+    eventTitleGroup.classList.remove('hidden');
+    eventTitleInput.required = true;
+
+    dayGroup.classList.add('hidden');
+    categoryGroup.classList.add('hidden');
+    textGroup.classList.add('hidden');
+    noteTextInput.required = false;
+    colorGroup.classList.add('hidden');
+
+    periodGroup.style.visibility = 'visible';
+    dueDateLabel.textContent = 'תאריך המבחן / המועד *';
+    noteDueDateInput.required = true;
+  } else {
+    eventTitleGroup.classList.add('hidden');
+    eventTitleInput.required = false;
+
+    dayGroup.classList.remove('hidden');
+    categoryGroup.classList.remove('hidden');
+    textGroup.classList.remove('hidden');
+    noteTextInput.required = true;
+    colorGroup.classList.remove('hidden');
+
+    periodGroup.style.visibility = isUnscheduled ? 'hidden' : 'visible';
+    dueDateLabel.textContent = 'תאריך יעד (אופציונלי)';
+    noteDueDateInput.required = false;
+  }
 }
 
-noteDayInput.addEventListener('change', togglePeriodVisibility);
+document.querySelectorAll('input[name="noteType"]').forEach((radio) => {
+  radio.addEventListener('change', updateFormVisibility);
+});
+
+noteDayInput.addEventListener('change', updateFormVisibility);
 
 function openNewNoteModal(day = 0, period = 'morning') {
   modalTitle.textContent = day === -1 ? 'הוספת משימה למחסן' : 'הוספת פתק / מועד';
@@ -363,8 +488,14 @@ function openNewNoteModal(day = 0, period = 'morning') {
   noteDayInput.value = day;
   notePeriodInput.value = period === 'unscheduled' ? 'morning' : period;
   document.querySelector('input[name="noteType"][value="task"]').checked = true;
+
+  if (day >= 0 && day <= 6) {
+    const weekDates = getWeekDates();
+    noteDueDateInput.value = toISODateString(weekDates[day]);
+  }
+
   selectColor('yellow');
-  togglePeriodVisibility();
+  updateFormVisibility();
   deleteNoteBtn.classList.add('hidden');
   modal.classList.remove('hidden');
   noteTextInput.focus();
@@ -373,18 +504,27 @@ function openNewNoteModal(day = 0, period = 'morning') {
 window.openNewNoteModal = openNewNoteModal;
 
 function openEditNoteModal(note) {
-  modalTitle.textContent = note.type === 'event' ? 'עריכת מועד חשוב' : 'עריכת פתק';
+  const isEvent = note.type === 'event';
+  modalTitle.textContent = isEvent ? 'עריכת מועד חשוב / מבחן' : 'עריכת פתק';
   noteIdInput.value = note.id;
   noteDayInput.value = note.day;
   notePeriodInput.value = note.period === 'unscheduled' ? 'morning' : note.period;
-  const typeVal = note.type === 'event' ? 'event' : 'task';
-  document.querySelector(`input[name="noteType"][value="${typeVal}"]`).checked = true;
-  noteCategoryInput.value = note.category || '';
-  noteTextInput.value = note.text || '';
+  document.querySelector(`input[name="noteType"][value="${isEvent ? 'event' : 'task'}"]`).checked = true;
+
+  if (isEvent) {
+    eventTitleInput.value = note.text || '';
+    noteCategoryInput.value = '';
+    noteTextInput.value = '';
+  } else {
+    eventTitleInput.value = '';
+    noteCategoryInput.value = note.category || '';
+    noteTextInput.value = note.text || '';
+  }
+
   noteDueDateInput.value = note.dueDate || '';
   noteEstimateInput.value = note.estimate || '';
   selectColor(note.color || 'yellow');
-  togglePeriodVisibility();
+  updateFormVisibility();
   deleteNoteBtn.classList.remove('hidden');
   modal.classList.remove('hidden');
 }
@@ -420,17 +560,23 @@ document.querySelectorAll('.color-swatch').forEach((btn) => {
 noteForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const id = noteIdInput.value;
-  const chosenDay = Number(noteDayInput.value);
   const chosenType = document.querySelector('input[name="noteType"]:checked').value;
+  const isEvent = chosenType === 'event';
+  const dueDateVal = noteDueDateInput.value;
+
+  let finalDay = Number(noteDayInput.value);
+  if (isEvent && dueDateVal) {
+    finalDay = getDayIndexFromISO(dueDateVal);
+  }
 
   const payload = {
     type: chosenType,
-    day: chosenDay,
-    period: chosenDay === -1 ? 'unscheduled' : notePeriodInput.value,
-    category: noteCategoryInput.value.trim(),
-    text: noteTextInput.value.trim(),
+    day: finalDay,
+    period: finalDay === -1 ? 'unscheduled' : notePeriodInput.value,
+    category: isEvent ? 'מבחן' : noteCategoryInput.value.trim(),
+    text: isEvent ? eventTitleInput.value.trim() : noteTextInput.value.trim(),
     color: selectedColor,
-    dueDate: noteDueDateInput.value,
+    dueDate: dueDateVal,
     estimate: noteEstimateInput.value.trim()
   };
 
@@ -439,6 +585,20 @@ noteForm.addEventListener('submit', async (e) => {
   } else {
     await createNoteOnServer({ ...payload, done: false });
   }
+
+  if (isEvent && dueDateVal) {
+    const [y, m, d] = dueDateVal.split('-').map(Number);
+    const targetDate = new Date(y, m - 1, d);
+    const targetSunday = new Date(targetDate);
+    targetSunday.setDate(targetDate.getDate() - targetDate.getDay());
+
+    const today = new Date();
+    const currentSunday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay());
+    const diffWeeks = Math.round((targetSunday - currentSunday) / (7 * 24 * 60 * 60 * 1000));
+    weekOffset = diffWeeks;
+    renderBoard();
+  }
+
   closeModal();
 });
 

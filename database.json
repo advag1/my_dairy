@@ -2,7 +2,12 @@
   "users": [
     {
       "id": "USR-3858",
-      "username": "אדווה"
+      "username": "אדווה",
+      "password": "USR-3858"
+    },
+    {
+      "id": "USR-3763",
+      "username": "דריה"
     }
   ],
   "notes": [
@@ -16,6 +21,161 @@
       "color": "yellow",
       "dueDate": "2026-11-30",
       "estimate": "1000 שעות",
+      "done": false
+    },
+    {
+      "id": "1795463864613",
+      "userId": "USR-3763",
+      "day": 2,
+      "period": "evening",
+      "category": "הגשת עבודה",
+      "text": "עבודה אונליין באנגלית על דמות מטקסט",
+      "color": "blue",
+      "dueDate": "2026-11-26",
+      "estimate": "שעה",
+      "done": false
+    },
+    {
+      "id": "1795463946611",
+      "userId": "USR-3763",
+      "type": "event",
+      "day": 2,
+      "period": "morning",
+      "category": "אודיסאה",
+      "text": "להתכונן ללינארית",
+      "color": "orange",
+      "dueDate": "2026-11-25",
+      "estimate": "ארבע שעות",
+      "done": false
+    },
+    {
+      "id": "1795464072243",
+      "userId": "USR-3763",
+      "type": "task",
+      "day": -1,
+      "period": "unscheduled",
+      "category": "הגשת עבודה",
+      "text": "עבודה אסינכרונית באופק",
+      "color": "blue",
+      "dueDate": "2026-12-05",
+      "estimate": "חצי שעה",
+      "done": false
+    },
+    {
+      "id": "1795464163848",
+      "userId": "USR-3763",
+      "type": "task",
+      "day": 3,
+      "period": "evening",
+      "category": "שיעורי בית",
+      "text": "לכתוב essay באנגלית",
+      "color": "blue",
+      "dueDate": "2026-11-26",
+      "estimate": "שעה וחצי",
+      "done": false
+    },
+    {
+      "id": "1795464231157",
+      "userId": "USR-3763",
+      "type": "task",
+      "day": 4,
+      "period": "morning",
+      "category": "הגשת עבודה",
+      "text": "לסיים עבודה בתנ\"ך",
+      "color": "blue",
+      "dueDate": "2026-11-29",
+      "estimate": "שעתיים וחצי",
+      "done": false
+    },
+    {
+      "id": "1795464323776",
+      "userId": "USR-3763",
+      "type": "task",
+      "day": 5,
+      "period": "evening",
+      "category": "אודיסאה",
+      "text": "בוחן 5 בהנדסת תוכנה",
+      "color": "pink",
+      "dueDate": "2026-11-30",
+      "estimate": "ארבעים וחמש דקות",
+      "done": false
+    },
+    {
+      "id": "1795464364284",
+      "userId": "USR-3763",
+      "type": "task",
+      "day": -1,
+      "period": "unscheduled",
+      "category": "אודיסאה",
+      "text": "בוחן 6 בהנדסת תוכנה",
+      "color": "pink",
+      "dueDate": "2026-12-07",
+      "estimate": "ארבעים וחמש דקות",
+      "done": false
+    },
+    {
+      "id": "1795464398712",
+      "userId": "USR-3763",
+      "type": "task",
+      "day": -1,
+      "period": "unscheduled",
+      "category": "אודיסאה",
+      "text": "שיעורי בית הנדסת תוכנה",
+      "color": "pink",
+      "dueDate": "2026-12-06",
+      "estimate": "ארבע שעות",
+      "done": false
+    },
+    {
+      "id": "1795464578656",
+      "userId": "USR-3763",
+      "type": "task",
+      "day": -1,
+      "period": "unscheduled",
+      "category": "סידורים",
+      "text": "לקנות מתנה לתמר יום הולדת",
+      "color": "green",
+      "dueDate": "2026-12-01",
+      "estimate": "",
+      "done": false
+    },
+    {
+      "id": "1795464644202",
+      "userId": "USR-3858",
+      "type": "event",
+      "day": 4,
+      "period": "morning",
+      "category": "מבחן",
+      "text": "מבחן בשפה",
+      "color": "yellow",
+      "dueDate": "2026-11-26",
+      "estimate": "",
+      "done": false
+    },
+    {
+      "id": "1795464716046",
+      "userId": "USR-3763",
+      "type": "task",
+      "day": 5,
+      "period": "evening",
+      "category": "אודיסאה",
+      "text": "לסיים את מה שעשינו בשיעור של דניאל",
+      "color": "pink",
+      "dueDate": "2026-12-14",
+      "estimate": "שעה",
+      "done": false
+    },
+    {
+      "id": "1795464787597",
+      "userId": "USR-3763",
+      "type": "event",
+      "day": -1,
+      "period": "unscheduled",
+      "category": "מבחן",
+      "text": "תנ\"ך",
+      "color": "orange",
+      "dueDate": "2026-12-13",
+      "estimate": "ארבע שעות",
       "done": false
     }
   ]

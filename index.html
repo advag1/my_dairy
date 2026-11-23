@@ -10,31 +10,36 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- מסך כניסה / בחירת משתמש -->
+  <!-- מסך כניסה / הרשמה עם שם משתמש וסיסמה -->
   <div id="authModal" class="modal-backdrop">
     <div class="modal-card auth-card">
       <div class="modal-header">
-        <h2>👋 כניסה ליומן השבועי</h2>
+        <h2 id="authTitle">🔒 כניסה ליומן השבועי</h2>
       </div>
-      <p class="auth-desc">הזיני שם משתמש (ייווצר לך ID אישי אוטומטית) או התחברי באמצעות ה-ID הקיים שלך:</p>
+      <p id="authDesc" class="auth-desc">הזיני את שם המשתמש והסיסמה שלך:</p>
       
       <form id="loginForm">
         <div class="form-group">
           <label for="loginUsername">שם משתמש</label>
-          <input type="text" id="loginUsername" placeholder="לדוגמה: נועה" />
+          <input type="text" id="loginUsername" placeholder="לדוגמה: אדווה" required />
         </div>
 
-        <div class="divider-or"><span>או</span></div>
-
         <div class="form-group">
-          <label for="loginUserId">מזהה משתמש (ID)</label>
-          <input type="text" id="loginUserId" placeholder="לדוגמה: USR-1234" dir="ltr" />
+          <label for="loginPassword">סיסמה</label>
+          <input type="password" id="loginPassword" placeholder="בחרי / הזיני סיסמה" required />
         </div>
 
         <p id="loginError" class="error-text hidden"></p>
 
-        <button type="submit" class="btn-primary full-width">כניסה ליומן</button>
+        <button type="submit" id="authSubmitBtn" class="btn-primary full-width">התחברות</button>
       </form>
+
+      <div style="margin-top: 14px; text-align: center; font-size: 0.85rem; color: #475569;">
+        <span id="authSwitchText">עוד אין לך משתמש?</span>
+        <button type="button" id="toggleAuthModeBtn" style="background:none; border:none; color:#2563eb; font-weight:700; cursor:pointer; text-decoration:underline;">
+          הגדירי שם משתמש וסיסמה כאן
+        </button>
+      </div>
     </div>
   </div>
 
@@ -43,11 +48,19 @@
     <header class="topbar">
       <div class="topbar-right">
         <h1>📅 יומן שבועי</h1>
-        <span id="weekRange" class="week-badge"></span>
+        
+        <!-- ניווט בין שבועות -->
+        <div style="display:flex; align-items:center; gap:4px;">
+          <button type="button" id="prevWeekBtn" class="logout-btn" title="שבוע קודם">◀</button>
+          <span id="weekRange" class="week-badge"></span>
+          <button type="button" id="nextWeekBtn" class="logout-btn" title="שבוע הבא">▶</button>
+          <button type="button" id="todayWeekBtn" class="logout-btn" title="חזור להיום">היום</button>
+        </div>
+
         <div id="userBadge" class="user-badge hidden">
           <span>👤 <strong id="displayUsername"></strong></span>
-          <span class="user-id-tag" id="displayUserId" title="ה-ID האישי שלך לשמירה"></span>
-          <button type="button" id="logoutBtn" class="logout-btn" title="החלף משתמש">החלף משתמש</button>
+          <span class="user-id-tag" id="displayUserId" title="ה-ID האישי שלך"></span>
+          <button type="button" id="logoutBtn" class="logout-btn" title="התנתקות">התנתק</button>
         </div>
       </div>
 
@@ -107,10 +120,16 @@
           </div>
         </div>
 
+        <!-- שדה כותרת יחיד (מוצג רק במבחן/מועד) -->
+        <div class="form-group hidden" id="eventTitleGroup">
+          <label for="eventTitleInput">כותרת המבחן / המועד *</label>
+          <input type="text" id="eventTitleInput" placeholder="לדוגמה: מבחן במתמטיקה / הגשת פרויקט" />
+        </div>
+
         <div class="form-row two-cols">
-          <div class="form-group">
+          <div class="form-group" id="dayGroup">
             <label for="noteDay">מתי לבצע?</label>
-            <select id="noteDay" required>
+            <select id="noteDay">
               <option value="-1">📥 עוד לא הוחלט (מחסן משימות)</option>
               <option value="0">יום ראשון</option>
               <option value="1">יום שני</option>
@@ -131,21 +150,34 @@
           </div>
         </div>
 
-        <div class="form-group">
-          <label for="noteCategory">למה זה קשור? (קורס, נושא, קטגוריה)</label>
-          <input type="text" id="noteCategory" placeholder="לדוגמה: מבחן במתמטיקה, אודיסאה, בית..." list="categorySuggestions" />
+        <div class="form-row two-cols">
+          <div class="form-group">
+            <label for="noteDueDate" id="dueDateLabel">תאריך יעד</label>
+            <input type="date" id="noteDueDate" />
+          </div>
+
+          <div class="form-group">
+            <label for="noteEstimate">שעה / זמן משוער</label>
+            <input type="text" id="noteEstimate" placeholder="לדוגמה: 09:00 / שעתיים" />
+          </div>
+        </div>
+
+        <!-- שדות למשימה רגילה בלבד (מוסתרים במבחן) -->
+        <div class="form-group" id="categoryGroup">
+          <label for="noteCategory">למה זה קשור? (קטגוריה)</label>
+          <input type="text" id="noteCategory" placeholder="לדוגמה: אודיסאה, בית, לימודים..." list="categorySuggestions" />
           <datalist id="categorySuggestions">
-            <option value="מבחן"></option>
-            <option value="הגשת עבודה"></option>
             <option value="שיעורי בית"></option>
             <option value="משימת בית"></option>
+            <option value="לימודים"></option>
+            <option value="עבודה"></option>
             <option value="סידורים"></option>
           </datalist>
         </div>
 
-        <div class="form-group">
-          <label for="noteText">תיאור המשימה / פרטי המועד</label>
-          <textarea id="noteText" rows="3" placeholder="מה צריך לעשות או לזכור?" required></textarea>
+        <div class="form-group" id="textGroup">
+          <label for="noteText">תוכן המשימה *</label>
+          <textarea id="noteText" rows="3" placeholder="מה צריך לעשות?" required></textarea>
         </div>
 
         <div class="form-group" id="colorGroup">
@@ -157,18 +189,6 @@
             <button type="button" class="color-swatch" data-color="green" style="background:#bbf7d0;" title="ירוק"></button>
             <button type="button" class="color-swatch" data-color="purple" style="background:#e9d5ff;" title="סגול"></button>
             <button type="button" class="color-swatch" data-color="orange" style="background:#fed7aa;" title="כתום"></button>
-          </div>
-        </div>
-
-        <div class="form-row two-cols">
-          <div class="form-group">
-            <label for="noteDueDate">תאריך המבחן / יעד</label>
-            <input type="date" id="noteDueDate" />
-          </div>
-
-          <div class="form-group">
-            <label for="noteEstimate">שעה / זמן משוער</label>
-            <input type="text" id="noteEstimate" placeholder="לדוגמה: 09:00 / שעתיים" />
           </div>
         </div>
 
