@@ -406,7 +406,6 @@ function createNoteElement(note) {
 }
 
 // --- Drag & Drop ---
-// --- Drag & Drop ---
 function setupDragAndDrop() {
   const dropzones = document.querySelectorAll('.notes-dropzone');
 
@@ -431,8 +430,8 @@ function setupDragAndDrop() {
 
       const updates = { day: targetDay, period: targetPeriod };
 
-      // אם לפתק או למבחן יש תאריך יעד, מעדכנים אותו לתאריך של היום שאליו נגרר
-      if (draggedNote && draggedNote.dueDate && targetDay !== -1) {
+      // רק במבחן/מועד התאריך משתנה בגרירה; במשימה רגילה תאריך היעד (הדדליין) נשמר!
+      if (draggedNote && draggedNote.type === 'event' && targetDay !== -1) {
         const weekDates = getWeekDates();
         updates.dueDate = toISODateString(weekDates[targetDay]);
       }
@@ -449,7 +448,6 @@ function updateFormVisibility() {
   const isUnscheduled = Number(noteDayInput.value) === -1;
 
   if (isEvent) {
-    // במבחן/מועד: מציגים כותרת אחת בלבד, מסתירים יום ידני, קטגוריה, תיאור וצבע
     eventTitleGroup.classList.remove('hidden');
     eventTitleInput.required = true;
 
@@ -484,18 +482,13 @@ document.querySelectorAll('input[name="noteType"]').forEach((radio) => {
 
 noteDayInput.addEventListener('change', updateFormVisibility);
 
-function openNewNoteModal(day = 0, period = 'morning') {
+function openNewNoteModal(day = new Date().getDay(), period = 'morning') {
   modalTitle.textContent = day === -1 ? 'הוספת משימה למחסן' : 'הוספת פתק / מועד';
   noteForm.reset();
   noteIdInput.value = '';
   noteDayInput.value = day;
   notePeriodInput.value = period === 'unscheduled' ? 'morning' : period;
   document.querySelector('input[name="noteType"][value="task"]').checked = true;
-
-  if (day >= 0 && day <= 6) {
-    const weekDates = getWeekDates();
-    noteDueDateInput.value = toISODateString(weekDates[day]);
-  }
 
   selectColor('yellow');
   updateFormVisibility();
@@ -551,7 +544,7 @@ function escapeHTML(str) {
     .replace(/"/g, '&quot;');
 }
 
-document.getElementById('openNewNoteBtn').addEventListener('click', () => openNewNoteModal(0, 'morning'));
+document.getElementById('openNewNoteBtn').addEventListener('click', () => openNewNoteModal(new Date().getDay(), 'morning'));
 document.getElementById('addBacklogBtn').addEventListener('click', () => openNewNoteModal(-1, 'unscheduled'));
 document.getElementById('closeModalBtn').addEventListener('click', closeModal);
 document.getElementById('cancelModalBtn').addEventListener('click', closeModal);
@@ -568,6 +561,7 @@ noteForm.addEventListener('submit', async (e) => {
   const dueDateVal = noteDueDateInput.value;
 
   let finalDay = Number(noteDayInput.value);
+  // רק במבחן/מועד היום נקבע אוטומטית מתוך התאריך
   if (isEvent && dueDateVal) {
     finalDay = getDayIndexFromISO(dueDateVal);
   }
