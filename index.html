@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>יומן שבועי - פתקים נדבקים</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- מסך כניסה / בחירת משתמש -->
+  <div id="authModal" class="modal-backdrop">
+    <div class="modal-card auth-card">
+      <div class="modal-header">
+        <h2>👋 כניסה ליומן השבועי</h2>
+      </div>
+      <p class="auth-desc">הזיני שם משתמש (ייווצר לך ID אישי אוטומטית) או התחברי באמצעות ה-ID הקיים שלך:</p>
+      
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="loginUsername">שם משתמש</label>
+          <input type="text" id="loginUsername" placeholder="לדוגמה: נועה" />
+        </div>
+
+        <div class="divider-or"><span>או</span></div>
+
+        <div class="form-group">
+          <label for="loginUserId">מזהה משתמש (ID)</label>
+          <input type="text" id="loginUserId" placeholder="לדוגמה: USR-1234" dir="ltr" />
+        </div>
+
+        <p id="loginError" class="error-text hidden"></p>
+
+        <button type="submit" class="btn-primary full-width">כניסה ליומן</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="app-container">
+    <!-- סרגל עליון -->
+    <header class="topbar">
+      <div class="topbar-right">
+        <h1>📅 יומן שבועי</h1>
+        <span id="weekRange" class="week-badge"></span>
+        <div id="userBadge" class="user-badge hidden">
+          <span>👤 <strong id="displayUsername"></strong></span>
+          <span class="user-id-tag" id="displayUserId" title="ה-ID האישי שלך לשמירה"></span>
+          <button type="button" id="logoutBtn" class="logout-btn" title="החלף משתמש">החלף משתמש</button>
+        </div>
+      </div>
+
+      <div class="topbar-controls">
+        <input type="text" id="searchInput" class="control-input" placeholder="🔍 חיפוש משימה..." />
+        <select id="categoryFilter" class="control-select">
+          <option value="all">כל הקטגוריות</option>
+          <option value="בית">בית</option>
+          <option value="לימודים">לימודים</option>
+          <option value="עבודה">עבודה</option>
+          <option value="אישי">אישי</option>
+        </select>
+        <button type="button" id="openNewNoteBtn" class="btn-primary">+ פתק חדש</button>
+      </div>
+    </header>
+
+    <!-- לוח שבועי - 7 עמודות על מסך אחד -->
+    <main class="board" id="weeklyBoard"></main>
+  </div>
+
+  <!-- חלונית (Modal) ליצירה ועריכה של פתק -->
+  <div id="noteModal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="modalTitle">פתק משימה חדש</h2>
+        <button type="button" id="closeModalBtn" class="icon-btn" aria-label="סגור">✕</button>
+      </div>
+
+      <form id="noteForm">
+        <input type="hidden" id="noteId" />
+
+        <div class="form-row two-cols">
+          <div class="form-group">
+            <label for="noteDay">יום בשבוע</label>
+            <select id="noteDay" required>
+              <option value="0">ראשון</option>
+              <option value="1">שני</option>
+              <option value="2">שלישי</option>
+              <option value="3">רביעי</option>
+              <option value="4">חמישי</option>
+              <option value="5">שישי</option>
+              <option value="6">שבת</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="notePeriod">זמן ביום</label>
+            <select id="notePeriod" required>
+              <option value="morning">☀️ בוקר</option>
+              <option value="evening">🌙 ערב</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- שדה אופציונלי - הוסר ה-required -->
+        <div class="form-group">
+          <label for="noteCategory">למה זה קשור? (יופיע בקטן בראש הפתק)</label>
+          <input type="text" id="noteCategory" placeholder="לדוגמה: משימת בית, שיעורי בית..." list="categorySuggestions" />
+          <datalist id="categorySuggestions">
+            <option value="משימת בית"></option>
+            <option value="שיעורי בית"></option>
+            <option value="עבודה"></option>
+            <option value="סידורים"></option>
+            <option value="ספורט ובריאות"></option>
+          </datalist>
+        </div>
+
+        <div class="form-group">
+          <label for="noteText">תוכן המשימה</label>
+          <textarea id="noteText" rows="3" placeholder="מה צריך לעשות?" required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>צבע הפתק</label>
+          <div class="color-picker" id="colorPicker">
+            <button type="button" class="color-swatch selected" data-color="yellow" style="background:#fef08a;" title="צהוב"></button>
+            <button type="button" class="color-swatch" data-color="pink" style="background:#fbcfe8;" title="ורוד"></button>
+            <button type="button" class="color-swatch" data-color="blue" style="background:#bae6fd;" title="תכלת"></button>
+            <button type="button" class="color-swatch" data-color="green" style="background:#bbf7d0;" title="ירוק"></button>
+            <button type="button" class="color-swatch" data-color="purple" style="background:#e9d5ff;" title="סגול"></button>
+            <button type="button" class="color-swatch" data-color="orange" style="background:#fed7aa;" title="כתום"></button>
+          </div>
+        </div>
+
+        <div class="form-row two-cols">
+          <div class="form-group">
+            <label for="noteDueDate">תאריך יעד</label>
+            <input type="date" id="noteDueDate" />
+          </div>
+
+          <div class="form-group">
+            <label for="noteEstimate">זמן עבודה משוער</label>
+            <input type="text" id="noteEstimate" placeholder="לדוגמה: 45 דק׳ / שעתיים" />
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" id="deleteNoteBtn" class="btn-danger hidden">מחק פתק</button>
+          <div class="modal-actions-left">
+            <button type="button" id="cancelModalBtn" class="btn-secondary">ביטול</button>
+            <button type="submit" class="btn-primary">שמור פתק</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

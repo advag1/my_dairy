@@ -1,0 +1,22 @@
+{
+  "users": [
+    {
+      "id": "USR-3858",
+      "username": "אדווה"
+    }
+  ],
+  "notes": [
+    {
+      "id": "1795447124254",
+      "userId": "USR-3858",
+      "day": 2,
+      "period": "morning",
+      "category": "אודיסאה",
+      "text": "משימה של טל",
+      "color": "yellow",
+      "dueDate": "2026-11-30",
+      "estimate": "1000 שעות",
+      "done": false
+    }
+  ]
+}
