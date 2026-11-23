@@ -406,6 +406,7 @@ function createNoteElement(note) {
 }
 
 // --- Drag & Drop ---
+// --- Drag & Drop ---
 function setupDragAndDrop() {
   const dropzones = document.querySelectorAll('.notes-dropzone');
 
@@ -429,7 +430,9 @@ function setupDragAndDrop() {
       const draggedNote = notes.find((n) => n.id === draggedNoteId);
 
       const updates = { day: targetDay, period: targetPeriod };
-      if (draggedNote && draggedNote.type === 'event' && targetDay !== -1) {
+
+      // אם לפתק או למבחן יש תאריך יעד, מעדכנים אותו לתאריך של היום שאליו נגרר
+      if (draggedNote && draggedNote.dueDate && targetDay !== -1) {
         const weekDates = getWeekDates();
         updates.dueDate = toISODateString(weekDates[targetDay]);
       }

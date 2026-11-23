@@ -177,6 +177,19 @@
       "dueDate": "2026-12-13",
       "estimate": "ארבע שעות",
       "done": false
+    },
+    {
+      "id": "1795465009408",
+      "userId": "USR-3858",
+      "type": "task",
+      "day": 4,
+      "period": "morning",
+      "category": "אודיסאה",
+      "text": "לראות הרצאה 6",
+      "color": "blue",
+      "dueDate": "2026-11-22",
+      "estimate": "",
+      "done": false
     }
   ]
 }
