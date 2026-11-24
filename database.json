@@ -216,6 +216,19 @@
       "dueDate": "2026-11-26",
       "estimate": "",
       "done": false
+    },
+    {
+      "id": "1795465836787",
+      "userId": "USR-3858",
+      "type": "task",
+      "day": 4,
+      "period": "evening",
+      "category": "אודיסאה",
+      "text": "ש.ב של הקורס הנדסת תוכנה",
+      "color": "blue",
+      "dueDate": "2026-12-06",
+      "estimate": "",
+      "done": false
     }
   ]
 }

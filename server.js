@@ -34,7 +34,7 @@ function generateUserId() {
   return 'USR-' + Math.floor(1000 + Math.random() * 9000);
 }
 
-// --- API הרשמה (הגדרת שם משתמש וסיסמה קבועים למשתמש חדש) ---
+// --- API הרשמה ---
 app.post('/api/register', (req, res) => {
   const { username, password } = req.body;
 
@@ -67,7 +67,7 @@ app.post('/api/register', (req, res) => {
   res.status(201).json({ id: newUser.id, username: newUser.username });
 });
 
-// --- API התחברות למשתמש קיים ---
+// --- API התחברות ---
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
 
@@ -87,7 +87,6 @@ app.post('/api/login', (req, res) => {
 
   const user = db.users[userIndex];
 
-  // תמיכה במשתמש ישן שנוצר לפני שהוספנו סיסמאות - שומר לו את הסיסמה הראשונה שיזין
   if (!user.password) {
     db.users[userIndex].password = password;
     writeDB(db);
@@ -118,6 +117,7 @@ app.post('/api/users/:userId/notes', (req, res) => {
     id: Date.now().toString(),
     userId: req.params.userId,
     type: req.body.type === 'event' ? 'event' : 'task',
+    weekStart: parsedDay === -1 ? '' : (req.body.weekStart || ''),
     day: parsedDay,
     period: parsedDay === -1 ? 'unscheduled' : (req.body.period === 'evening' ? 'evening' : 'morning'),
     category: req.body.category || '',

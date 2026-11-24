@@ -18,8 +18,7 @@
 }
 
 html, body {
-  height: 100%;
-  overflow: hidden;
+  min-height: 100%;
   background-color: var(--bg-app);
   color: var(--text-main);
 }
@@ -27,9 +26,9 @@ html, body {
 .app-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  min-height: 100vh;
   padding: 10px 14px;
-  gap: 10px;
+  gap: 12px;
 }
 
 /* סרגל עליון */
@@ -41,7 +40,10 @@ html, body {
   padding: 8px 14px;
   border-radius: 10px;
   border: 1px solid var(--border-color);
-  flex-shrink: 0;
+  position: sticky;
+  top: 8px;
+  z-index: 20;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
   gap: 10px;
 }
 
@@ -63,6 +65,7 @@ html, body {
   padding: 3px 8px;
   border-radius: 6px;
   color: #334155;
+  font-weight: 600;
 }
 
 .user-badge {
@@ -173,13 +176,50 @@ html, body {
   cursor: pointer;
 }
 
+/* מעטפת לשני השבועות */
+.weeks-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.week-block {
+  background: #e2e8f077;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.week-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 4px;
+}
+
+.week-block-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.week-block-dates {
+  font-size: 0.8rem;
+  color: #475569;
+  background: #ffffff;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+}
+
 /* לוח 7 הימים */
 .board {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 8px;
-  flex: 1;
-  min-height: 0;
 }
 
 .day-column {
@@ -188,12 +228,17 @@ html, body {
   border-radius: 10px;
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  min-height: 280px;
   overflow: hidden;
 }
 
 .day-column.is-today {
   border: 2px solid var(--today-border);
+}
+
+.day-column.is-selected-day {
+  border: 2.5px solid #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.18);
 }
 
 .day-header {
@@ -202,16 +247,27 @@ html, body {
   background: #f8fafc;
   border-bottom: 1px solid var(--border-color);
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-shrink: 0;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.day-header:hover {
+  background: #e2e8f0;
 }
 
 .day-column.is-today .day-header {
   background: var(--today-accent);
   color: #1e3a8a;
+}
+
+.day-column.is-selected-day .day-header {
+  background: #ede9fe;
+  color: #5b21b6;
 }
 
 .day-date-sub {
@@ -224,7 +280,7 @@ html, body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  min-height: 115px;
   padding: 6px;
 }
 
@@ -245,7 +301,6 @@ html, body {
   font-weight: 600;
   color: #475569;
   margin-bottom: 5px;
-  flex-shrink: 0;
 }
 
 .add-mini-btn {
@@ -296,8 +351,7 @@ html, body {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: 10px;
-  padding: 8px 12px;
-  flex-shrink: 0;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -328,20 +382,16 @@ html, body {
 
 .backlog-dropzone {
   flex-direction: row;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
+  flex-wrap: wrap;
   min-height: 62px;
-  max-height: 88px;
-  padding: 4px;
+  padding: 6px;
   background: #f8fafc;
   border: 1px dashed #cbd5e1;
 }
 
 .backlog-dropzone .sticky-note {
   min-width: 175px;
-  max-width: 210px;
-  flex-shrink: 0;
+  max-width: 220px;
 }
 
 .backlog-empty {
@@ -519,26 +569,6 @@ html, body {
   line-height: 1.4;
 }
 
-.divider-or {
-  text-align: center;
-  position: relative;
-  margin: 10px 0;
-  font-size: 0.8rem;
-  color: #94a3b8;
-}
-
-.divider-or::before,
-.divider-or::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  width: 42%;
-  height: 1px;
-  background: #e2e8f0;
-}
-.divider-or::before { right: 0; }
-.divider-or::after { left: 0; }
-
 .error-text {
   color: #dc2626;
   font-size: 0.8rem;
@@ -616,6 +646,7 @@ label {
 }
 
 input[type="text"],
+input[type="password"],
 input[type="date"],
 select,
 textarea {
@@ -660,18 +691,12 @@ textarea {
 
 /* --- התאמה לטלפון ולטאבלט --- */
 @media (max-width: 900px) {
-  html, body {
-    height: auto;
-    overflow-y: auto;
-  }
-
   .app-container {
-    height: auto;
-    min-height: 100vh;
     padding: 8px;
   }
 
   .topbar {
+    position: static;
     flex-direction: column;
     align-items: stretch;
   }
@@ -706,8 +731,6 @@ textarea {
 
   .backlog-dropzone {
     flex-direction: column;
-    max-height: none;
-    overflow-x: visible;
   }
 
   .backlog-dropzone .sticky-note {

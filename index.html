@@ -47,13 +47,13 @@
     <!-- סרגל עליון -->
     <header class="topbar">
       <div class="topbar-right">
-        <h1>📅 יומן שבועי</h1>
+        <h1>📅 יומן דו-שבועי</h1>
         
         <!-- ניווט בין שבועות -->
         <div style="display:flex; align-items:center; gap:4px;">
-          <button type="button" id="prevWeekBtn" class="logout-btn" title="שבוע קודם">◀</button>
+          <button type="button" id="prevWeekBtn" class="logout-btn" title="שבוע אחורה">◀</button>
           <span id="weekRange" class="week-badge"></span>
-          <button type="button" id="nextWeekBtn" class="logout-btn" title="שבוע הבא">▶</button>
+          <button type="button" id="nextWeekBtn" class="logout-btn" title="שבוע קדימה">▶</button>
           <button type="button" id="todayWeekBtn" class="logout-btn" title="חזור להיום">היום</button>
         </div>
 
@@ -78,8 +78,8 @@
       </div>
     </header>
 
-    <!-- לוח שבועי - 7 עמודות -->
-    <main class="board" id="weeklyBoard"></main>
+    <!-- אזור גלילה מרכזי המכיל 2 לוחות שבועיים -->
+    <div class="weeks-wrapper" id="weeksContainer"></div>
 
     <!-- אזור תחתון: משימות שטרם שובצו -->
     <section class="backlog-section">
@@ -90,7 +90,7 @@
         </div>
         <button type="button" id="addBacklogBtn" class="btn-secondary-sm">+ משימה למחסן</button>
       </div>
-      <div class="notes-dropzone backlog-dropzone" id="backlogZone" data-day="-1" data-period="unscheduled"></div>
+      <div class="notes-dropzone backlog-dropzone" id="backlogZone" data-week-start="" data-day="-1" data-period="unscheduled"></div>
     </section>
   </div>
 
@@ -126,9 +126,15 @@
           <input type="text" id="eventTitleInput" placeholder="לדוגמה: מבחן במתמטיקה / הגשת פרויקט" />
         </div>
 
+        <!-- בחירת שבוע (מוצג למשימות רגילות) -->
+        <div class="form-group" id="weekSelectGroup">
+          <label for="noteWeek">באיזה שבוע לבצע?</label>
+          <select id="noteWeek"></select>
+        </div>
+
         <div class="form-row two-cols">
           <div class="form-group" id="dayGroup">
-            <label for="noteDay">מתי לבצע?</label>
+            <label for="noteDay">יום בשבוע</label>
             <select id="noteDay">
               <option value="-1">📥 עוד לא הוחלט (מחסן משימות)</option>
               <option value="0">יום ראשון</option>

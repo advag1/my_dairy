@@ -6,7 +6,8 @@ let notes = [];
 let selectedColor = 'yellow';
 let draggedNoteId = null;
 let isRegisterMode = false;
-let weekOffset = 0;
+let weekOffset = 0; // 0 = השבוע הנוכחי + שבוע הבא
+let activeSelection = null; // { weekStart: 'YYYY-MM-DD', day: 0-6 } או null
 
 // אלמנטים של התחברות / הרשמה
 const authModal = document.getElementById('authModal');
@@ -25,7 +26,7 @@ const displayUserId = document.getElementById('displayUserId');
 const logoutBtn = document.getElementById('logoutBtn');
 
 // אלמנטים מה-DOM
-const boardEl = document.getElementById('weeklyBoard');
+const weeksContainerEl = document.getElementById('weeksContainer');
 const backlogZoneEl = document.getElementById('backlogZone');
 const searchInput = document.getElementById('searchInput');
 const categoryFilter = document.getElementById('categoryFilter');
@@ -38,6 +39,8 @@ const noteForm = document.getElementById('noteForm');
 const noteIdInput = document.getElementById('noteId');
 const eventTitleGroup = document.getElementById('eventTitleGroup');
 const eventTitleInput = document.getElementById('eventTitleInput');
+const weekSelectGroup = document.getElementById('weekSelectGroup');
+const noteWeekInput = document.getElementById('noteWeek');
 const dayGroup = document.getElementById('dayGroup');
 const noteDayInput = document.getElementById('noteDay');
 const periodGroup = document.getElementById('periodGroup');
@@ -137,6 +140,7 @@ logoutBtn.addEventListener('click', () => {
   localStorage.removeItem(USER_SESSION_KEY);
   currentUser = null;
   notes = [];
+  activeSelection = null;
   userBadge.classList.add('hidden');
   renderBoard();
   authModal.classList.remove('hidden');
@@ -196,13 +200,13 @@ async function deleteNoteOnServer(noteId) {
   });
 }
 
-// --- חישוב תאריכי השבוע ---
-function getWeekDates() {
+// --- חישוב תאריכי השבועות ---
+function getWeekDatesByOffset(offset) {
   const today = new Date();
   const currentDay = today.getDay();
   const sunday = new Date(today);
   sunday.setHours(0, 0, 0, 0);
-  sunday.setDate(today.getDate() - currentDay + weekOffset * 7);
+  sunday.setDate(today.getDate() - currentDay + offset * 7);
 
   const dates = [];
   for (let i = 0; i < 7; i++) {
@@ -220,6 +224,13 @@ function toISODateString(dateObj) {
   return `${y}-${m}-${d}`;
 }
 
+function getSundayISOFromDateISO(isoStr) {
+  const [y, m, d] = isoStr.split('-').map(Number);
+  const dateObj = new Date(y, m - 1, d);
+  dateObj.setDate(dateObj.getDate() - dateObj.getDay());
+  return toISODateString(dateObj);
+}
+
 function getDayIndexFromISO(isoStr) {
   const [y, m, d] = isoStr.split('-').map(Number);
   return new Date(y, m - 1, d).getDay();
@@ -229,52 +240,119 @@ function formatShortDate(dateObj) {
   return `${dateObj.getDate()}/${dateObj.getMonth() + 1}`;
 }
 
+function getWeekFriendlyTitle(offset) {
+  if (offset === 0) return '📌 השבוע הנוכחי';
+  if (offset === 1) return '🗓️ שבוע הבא';
+  if (offset === -1) return '⏪ שבוע שעבר';
+  if (offset > 1) return `🗓️ בעוד ${offset} שבועות`;
+  return `⏪ לפני ${Math.abs(offset)} שבועות`;
+}
+
 document.getElementById('prevWeekBtn').addEventListener('click', () => {
   weekOffset--;
+  activeSelection = null;
   renderBoard();
 });
 
 document.getElementById('nextWeekBtn').addEventListener('click', () => {
   weekOffset++;
+  activeSelection = null;
   renderBoard();
 });
 
 document.getElementById('todayWeekBtn').addEventListener('click', () => {
   weekOffset = 0;
+  activeSelection = null;
   renderBoard();
 });
 
+// סימון או ביטול סימון של יום ספציפי באחד משני השבועות
+function toggleSelectDay(weekStartISO, dayIndex) {
+  if (
+    activeSelection &&
+    activeSelection.weekStart === weekStartISO &&
+    activeSelection.day === dayIndex
+  ) {
+    activeSelection = null;
+  } else {
+    activeSelection = { weekStart: weekStartISO, day: dayIndex };
+  }
+  renderBoard();
+}
+
 function renderEmptyBoardStructure() {
-  const weekDates = getWeekDates();
+  const week1Dates = getWeekDatesByOffset(weekOffset);
+  const week2Dates = getWeekDatesByOffset(weekOffset + 1);
   const todayISO = toISODateString(new Date());
-  weekRangeEl.textContent = `${formatShortDate(weekDates[0])} - ${formatShortDate(weekDates[6])}`;
-  boardEl.innerHTML = '';
+
+  weekRangeEl.textContent = `${formatShortDate(week1Dates[0])} - ${formatShortDate(week2Dates[6])}`;
+  weeksContainerEl.innerHTML = '';
   backlogZoneEl.innerHTML = '';
 
-  DAYS.forEach((dayName, dayIndex) => {
-    const colDateISO = toISODateString(weekDates[dayIndex]);
-    const col = document.createElement('section');
-    col.className = `day-column ${colDateISO === todayISO ? 'is-today' : ''}`;
-    col.innerHTML = `
-      <div class="day-header">
-        <span>יום ${dayName}</span>
-        <span class="day-date-sub">${formatShortDate(weekDates[dayIndex])}</span>
-      </div>
-      ${buildPeriodHTML(dayIndex, 'morning', '☀️ בוקר')}
-      ${buildPeriodHTML(dayIndex, 'evening', '🌙 ערב')}
+  // עדכון טקסט הכפתור העליון לפי היום המסומן
+  const mainAddBtn = document.getElementById('openNewNoteBtn');
+  if (activeSelection) {
+    const [, m, d] = activeSelection.weekStart.split('-').map(Number);
+    const baseDate = new Date(Number(activeSelection.weekStart.split('-')[0]), m - 1, d + activeSelection.day);
+    mainAddBtn.textContent = `+ הוסף ליום ${DAYS[activeSelection.day]} (${formatShortDate(baseDate)})`;
+  } else {
+    mainAddBtn.textContent = '+ הוסף פתק / מועד';
+  }
+
+  // רינדור שני בלוקים: שבוע 1 (weekOffset) ושבוע 2 (weekOffset + 1)
+  [weekOffset, weekOffset + 1].forEach((offset) => {
+    const wDates = getWeekDatesByOffset(offset);
+    const weekStartISO = toISODateString(wDates[0]);
+
+    const weekBlock = document.createElement('section');
+    weekBlock.className = 'week-block';
+
+    const headerDiv = document.createElement('div');
+    headerDiv.className = 'week-block-header';
+    headerDiv.innerHTML = `
+      <span class="week-block-title">${getWeekFriendlyTitle(offset)}</span>
+      <span class="week-block-dates">${formatShortDate(wDates[0])} - ${formatShortDate(wDates[6])}</span>
     `;
-    boardEl.appendChild(col);
+    weekBlock.appendChild(headerDiv);
+
+    const boardGrid = document.createElement('div');
+    boardGrid.className = 'board';
+
+    DAYS.forEach((dayName, dayIndex) => {
+      const colDateISO = toISODateString(wDates[dayIndex]);
+      const isToday = colDateISO === todayISO;
+      const isSelected =
+        activeSelection &&
+        activeSelection.weekStart === weekStartISO &&
+        activeSelection.day === dayIndex;
+
+      const col = document.createElement('article');
+      col.className = `day-column ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected-day' : ''}`;
+      col.innerHTML = `
+        <div class="day-header" title="לחצי לסימון יום זה כיעד ברירת מחדל לפתקים חדשים">
+          <span>יום ${dayName} ${isSelected ? '📌' : ''}</span>
+          <span class="day-date-sub">${formatShortDate(wDates[dayIndex])}</span>
+        </div>
+        ${buildPeriodHTML(weekStartISO, dayIndex, 'morning', '☀️ בוקר')}
+        ${buildPeriodHTML(weekStartISO, dayIndex, 'evening', '🌙 ערב')}
+      `;
+
+      col.querySelector('.day-header').addEventListener('click', () =>
+        toggleSelectDay(weekStartISO, dayIndex)
+      );
+      boardGrid.appendChild(col);
+    });
+
+    weekBlock.appendChild(boardGrid);
+    weeksContainerEl.appendChild(weekBlock);
   });
 }
 
-// --- רינדור הלוח השבועי ומחסן המשימות ---
+// --- רינדור הפתקים והמועדים בשני השבועות ובמחסן ---
 function renderBoard() {
   renderEmptyBoardStructure();
 
-  const weekDates = getWeekDates();
-  const weekStartISO = toISODateString(weekDates[0]);
-  const weekEndISO = toISODateString(weekDates[6]);
-
+  const currentRealSundayISO = toISODateString(getWeekDatesByOffset(0)[0]);
   const query = searchInput.value.trim().toLowerCase();
   const selectedCat = categoryFilter.value;
 
@@ -302,13 +380,12 @@ function renderBoard() {
       return;
     }
 
+    // אם זה מבחן/מועד עם תאריך -> משבצים אוטומטית לשבוע וליום של התאריך
     if (note.type === 'event' && note.dueDate) {
-      if (note.dueDate < weekStartISO || note.dueDate > weekEndISO) {
-        return;
-      }
+      const targetWeekStart = getSundayISOFromDateISO(note.dueDate);
       const exactDay = getDayIndexFromISO(note.dueDate);
       const zone = document.querySelector(
-        `.notes-dropzone[data-day="${exactDay}"][data-period="${note.period || 'morning'}"]`
+        `.notes-dropzone[data-week-start="${targetWeekStart}"][data-day="${exactDay}"][data-period="${note.period || 'morning'}"]`
       );
       if (zone) {
         zone.appendChild(createNoteElement(note));
@@ -316,8 +393,10 @@ function renderBoard() {
       return;
     }
 
+    // משימה רגילה: אם יש לה weekStart שמור משתמשים בו, אחרת משייכים לשבוע הנוכחי האמיתי (תאימות לאחור)
+    const noteWeekStart = note.weekStart || currentRealSundayISO;
     const zone = document.querySelector(
-      `.notes-dropzone[data-day="${note.day}"][data-period="${note.period}"]`
+      `.notes-dropzone[data-week-start="${noteWeekStart}"][data-day="${note.day}"][data-period="${note.period}"]`
     );
     if (zone) {
       zone.appendChild(createNoteElement(note));
@@ -331,14 +410,14 @@ function renderBoard() {
   setupDragAndDrop();
 }
 
-function buildPeriodHTML(dayIndex, period, label) {
+function buildPeriodHTML(weekStartISO, dayIndex, period, label) {
   return `
     <div class="period-section ${period}">
       <div class="period-header">
         <span>${label}</span>
-        <button type="button" class="add-mini-btn" onclick="openNewNoteModal(${dayIndex}, '${period}')" title="הוסף פתק">+</button>
+        <button type="button" class="add-mini-btn" onclick="openNewNoteModal('${weekStartISO}', ${dayIndex}, '${period}')" title="הוסף פתק">+</button>
       </div>
-      <div class="notes-dropzone" data-day="${dayIndex}" data-period="${period}"></div>
+      <div class="notes-dropzone" data-week-start="${weekStartISO}" data-day="${dayIndex}" data-period="${period}"></div>
     </div>
   `;
 }
@@ -405,7 +484,7 @@ function createNoteElement(note) {
   return card;
 }
 
-// --- Drag & Drop ---
+// --- Drag & Drop (כולל גרירה בין השבוע הנוכחי לשבוע הבא ולמחסן) ---
 function setupDragAndDrop() {
   const dropzones = document.querySelectorAll('.notes-dropzone');
 
@@ -425,15 +504,21 @@ function setupDragAndDrop() {
       if (!draggedNoteId) return;
 
       const targetDay = Number(zone.dataset.day);
+      const targetWeekStart = targetDay === -1 ? '' : zone.dataset.weekStart;
       const targetPeriod = targetDay === -1 ? 'unscheduled' : zone.dataset.period;
       const draggedNote = notes.find((n) => n.id === draggedNoteId);
 
-      const updates = { day: targetDay, period: targetPeriod };
+      const updates = {
+        weekStart: targetWeekStart,
+        day: targetDay,
+        period: targetPeriod
+      };
 
-      // רק במבחן/מועד התאריך משתנה בגרירה; במשימה רגילה תאריך היעד (הדדליין) נשמר!
-      if (draggedNote && draggedNote.type === 'event' && targetDay !== -1) {
-        const weekDates = getWeekDates();
-        updates.dueDate = toISODateString(weekDates[targetDay]);
+      // אם גוררים מבחן/מועד, התאריך שלו מתעדכן אוטומטית ליום ולשבוע שאליו נגרר
+      if (draggedNote && draggedNote.type === 'event' && targetDay !== -1 && targetWeekStart) {
+        const [y, m, d] = targetWeekStart.split('-').map(Number);
+        const newDate = new Date(y, m - 1, d + targetDay);
+        updates.dueDate = toISODateString(newDate);
       }
 
       updateNoteOnServer(draggedNoteId, updates);
@@ -441,7 +526,36 @@ function setupDragAndDrop() {
   });
 }
 
-// --- התאמת הטופס לפי סוג הפריט (משימה vs מבחן/מועד) ---
+// --- מילוי תפריט בחירת שבוע במודאל ---
+function populateWeekSelect(selectedWeekStartISO) {
+  noteWeekInput.innerHTML = '';
+  // מציג אפשרויות משבוע אחורה ועד 6 שבועות קדימה
+  for (let offset = weekOffset - 1; offset <= weekOffset + 5; offset++) {
+    const wDates = getWeekDatesByOffset(offset);
+    const startISO = toISODateString(wDates[0]);
+    const opt = document.createElement('option');
+    opt.value = startISO;
+    opt.textContent = `${getWeekFriendlyTitle(offset)} (${formatShortDate(wDates[0])} - ${formatShortDate(wDates[6])})`;
+    noteWeekInput.appendChild(opt);
+  }
+
+  if (selectedWeekStartISO) {
+    // אם השבוע של הפתק לא ברשימה (למשל פתק ישן), נוסיף אותו
+    const exists = Array.from(noteWeekInput.options).some((o) => o.value === selectedWeekStartISO);
+    if (!exists) {
+      const [y, m, d] = selectedWeekStartISO.split('-').map(Number);
+      const startObj = new Date(y, m - 1, d);
+      const endObj = new Date(y, m - 1, d + 6);
+      const opt = document.createElement('option');
+      opt.value = selectedWeekStartISO;
+      opt.textContent = `שבוע ${formatShortDate(startObj)} - ${formatShortDate(endObj)}`;
+      noteWeekInput.appendChild(opt);
+    }
+    noteWeekInput.value = selectedWeekStartISO;
+  }
+}
+
+// --- התאמת הטופס לפי סוג הפריט ---
 function updateFormVisibility() {
   const selectedType = document.querySelector('input[name="noteType"]:checked').value;
   const isEvent = selectedType === 'event';
@@ -451,6 +565,7 @@ function updateFormVisibility() {
     eventTitleGroup.classList.remove('hidden');
     eventTitleInput.required = true;
 
+    weekSelectGroup.classList.add('hidden');
     dayGroup.classList.add('hidden');
     categoryGroup.classList.add('hidden');
     textGroup.classList.add('hidden');
@@ -464,6 +579,7 @@ function updateFormVisibility() {
     eventTitleGroup.classList.add('hidden');
     eventTitleInput.required = false;
 
+    weekSelectGroup.classList.toggle('hidden', isUnscheduled);
     dayGroup.classList.remove('hidden');
     categoryGroup.classList.remove('hidden');
     textGroup.classList.remove('hidden');
@@ -482,11 +598,20 @@ document.querySelectorAll('input[name="noteType"]').forEach((radio) => {
 
 noteDayInput.addEventListener('change', updateFormVisibility);
 
-function openNewNoteModal(day = new Date().getDay(), period = 'morning') {
-  modalTitle.textContent = day === -1 ? 'הוספת משימה למחסן' : 'הוספת פתק / מועד';
+function openNewNoteModal(weekStartISO = null, day = null, period = 'morning') {
+  const defaultWeekStart =
+    weekStartISO ||
+    (activeSelection ? activeSelection.weekStart : toISODateString(getWeekDatesByOffset(weekOffset)[0]));
+  const targetDay =
+    day !== null ? day : (activeSelection ? activeSelection.day : new Date().getDay());
+
+  modalTitle.textContent =
+    targetDay === -1 ? 'הוספת משימה למחסן' : `הוספת פתק / מועד (יום ${DAYS[targetDay]})`;
+
   noteForm.reset();
   noteIdInput.value = '';
-  noteDayInput.value = day;
+  populateWeekSelect(defaultWeekStart);
+  noteDayInput.value = targetDay;
   notePeriodInput.value = period === 'unscheduled' ? 'morning' : period;
   document.querySelector('input[name="noteType"][value="task"]').checked = true;
 
@@ -501,8 +626,11 @@ window.openNewNoteModal = openNewNoteModal;
 
 function openEditNoteModal(note) {
   const isEvent = note.type === 'event';
+  const currentRealSundayISO = toISODateString(getWeekDatesByOffset(0)[0]);
+
   modalTitle.textContent = isEvent ? 'עריכת מועד חשוב / מבחן' : 'עריכת פתק';
   noteIdInput.value = note.id;
+  populateWeekSelect(note.weekStart || currentRealSundayISO);
   noteDayInput.value = note.day;
   notePeriodInput.value = note.period === 'unscheduled' ? 'morning' : note.period;
   document.querySelector(`input[name="noteType"][value="${isEvent ? 'event' : 'task'}"]`).checked = true;
@@ -544,8 +672,8 @@ function escapeHTML(str) {
     .replace(/"/g, '&quot;');
 }
 
-document.getElementById('openNewNoteBtn').addEventListener('click', () => openNewNoteModal(new Date().getDay(), 'morning'));
-document.getElementById('addBacklogBtn').addEventListener('click', () => openNewNoteModal(-1, 'unscheduled'));
+document.getElementById('openNewNoteBtn').addEventListener('click', () => openNewNoteModal(null, null, 'morning'));
+document.getElementById('addBacklogBtn').addEventListener('click', () => openNewNoteModal('', -1, 'unscheduled'));
 document.getElementById('closeModalBtn').addEventListener('click', closeModal);
 document.getElementById('cancelModalBtn').addEventListener('click', closeModal);
 
@@ -561,13 +689,16 @@ noteForm.addEventListener('submit', async (e) => {
   const dueDateVal = noteDueDateInput.value;
 
   let finalDay = Number(noteDayInput.value);
-  // רק במבחן/מועד היום נקבע אוטומטית מתוך התאריך
+  let finalWeekStart = finalDay === -1 ? '' : noteWeekInput.value;
+
   if (isEvent && dueDateVal) {
     finalDay = getDayIndexFromISO(dueDateVal);
+    finalWeekStart = getSundayISOFromDateISO(dueDateVal);
   }
 
   const payload = {
     type: chosenType,
+    weekStart: finalWeekStart,
     day: finalDay,
     period: finalDay === -1 ? 'unscheduled' : notePeriodInput.value,
     category: isEvent ? 'מבחן' : noteCategoryInput.value.trim(),
@@ -583,6 +714,7 @@ noteForm.addEventListener('submit', async (e) => {
     await createNoteOnServer({ ...payload, done: false });
   }
 
+  // אם נוסף מבחן מחוץ לשני השבועות המוצגים כרגע, נקפוץ אליו אוטומטית
   if (isEvent && dueDateVal) {
     const [y, m, d] = dueDateVal.split('-').map(Number);
     const targetDate = new Date(y, m - 1, d);
@@ -592,8 +724,11 @@ noteForm.addEventListener('submit', async (e) => {
     const today = new Date();
     const currentSunday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay());
     const diffWeeks = Math.round((targetSunday - currentSunday) / (7 * 24 * 60 * 60 * 1000));
-    weekOffset = diffWeeks;
-    renderBoard();
+
+    if (diffWeeks < weekOffset || diffWeeks > weekOffset + 1) {
+      weekOffset = diffWeeks;
+      renderBoard();
+    }
   }
 
   closeModal();
