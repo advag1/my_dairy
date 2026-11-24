@@ -47,14 +47,20 @@
     <!-- סרגל עליון -->
     <header class="topbar">
       <div class="topbar-right">
-        <h1>📅 יומן דו-שבועי</h1>
+        <h1>📅 יומן שבועי</h1>
         
-        <!-- ניווט בין שבועות -->
+        <!-- לשוניות מעבר בין השבוע הנוכחי לשבוע הבא -->
+        <div class="week-tabs">
+          <button type="button" id="tabCurrentWeek" class="week-tab active">📌 השבוע הנוכחי</button>
+          <button type="button" id="tabNextWeek" class="week-tab">🗓️ שבוע הבא</button>
+        </div>
+
+        <!-- ניווט משני לשבועות נוספים וחזרה להיום -->
         <div style="display:flex; align-items:center; gap:4px;">
           <button type="button" id="prevWeekBtn" class="logout-btn" title="שבוע אחורה">◀</button>
           <span id="weekRange" class="week-badge"></span>
           <button type="button" id="nextWeekBtn" class="logout-btn" title="שבוע קדימה">▶</button>
-          <button type="button" id="todayWeekBtn" class="logout-btn" title="חזור להיום">היום</button>
+          <button type="button" id="todayWeekBtn" class="logout-btn" title="חזרה לשבוע הנוכחי">היום</button>
         </div>
 
         <div id="userBadge" class="user-badge hidden">
@@ -78,8 +84,8 @@
       </div>
     </header>
 
-    <!-- אזור גלילה מרכזי המכיל 2 לוחות שבועיים -->
-    <div class="weeks-wrapper" id="weeksContainer"></div>
+    <!-- לוח שבועי יחיד - 7 עמודות -->
+    <main class="board" id="weeklyBoard"></main>
 
     <!-- אזור תחתון: משימות שטרם שובצו -->
     <section class="backlog-section">
